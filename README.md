@@ -14,7 +14,9 @@
 
 ![tutor4](./tutor4.png)
 
-### para rodar o jogo importe o projeto abrindo a pasta do projeto, abrir arquivo desktopLauncher em desktop e apertar no play, ou entãoclickar em gradle no lado direito, abrir a pasta->desktop->tasks->other-> clickar duas vezes em 'run' para rodar o game que está em com.badlogic.drop, e o o launcher em desktopLauncher
+### para rodar o jogo importe o projeto abrindo a pasta do Game Server, abrir arquivo desktopLauncher em desktop e apertar no play, ou entãoclickar em gradle no lado direito, abrir a pasta->desktop->tasks->other-> clickar duas vezes em 'run'.
+
+Fazer o mesmo para cada a pasta Game Client
 
 ![tutor5](./tutor5.png)
 

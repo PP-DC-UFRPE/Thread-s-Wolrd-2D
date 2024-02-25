@@ -25,13 +25,13 @@ public class Client extends ApplicationAdapter {
     public SpriteBatch batch;
     public Texture wallImage;
     public Array<Rectangle> walls = null;
-    public float cameraWidth = 640;
-    public float cameraHeight = 640;
+    public float cameraWidth = 1280;
+    public float cameraHeight = 720;
 
     public ClientData clientData = null;
     public Labyrinth labyrinth = null;
+    public Coin coin = null;
     public Map<String, Player> playersMap = null;
-    public Player player = null;
     public static final int PORT = 3000;
     public static final String SERVERADRESS = "localhost";
     public Socket socket;
@@ -47,8 +47,8 @@ public class Client extends ApplicationAdapter {
             camera.setToOrtho(false, cameraWidth, cameraHeight);
             batch = new SpriteBatch();
 
+            clientData = new ClientData();
             socket = new Socket(SERVERADRESS, PORT); // Conecta ao localhost na porta 8080
-            socket.setSoTimeout(15000);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
         } catch (IOException e) {
@@ -67,19 +67,19 @@ public class Client extends ApplicationAdapter {
                 if (obj == null) return;
                 //System.out.println("Labirinto chegou: " + obj);
                 labyrinth = obj;
-                walls = new Array<>();
-                for (int x = 0; x < labyrinth.width; x++) {
-                    for (int y = 0; y < labyrinth.height; y++) {
-                        if (labyrinth.walls[x][y]) {
-                            Rectangle wall = new Rectangle();
-                            wall.x = x * 32;
-                            wall.y = y * 32;
-                            wall.width = 32;
-                            wall.height = 32;
-                            walls.add(wall);
-                        }
-                    }
-                }
+//                walls = new Array<>();
+//                for (int x = 0; x < 12; x++) {
+//                    for (int y = 0; y < 7; y++) {
+//                        if (labyrinth.walls[x][y]) {
+//                            Rectangle wall = new Rectangle();
+//                            wall.x = x * 100;
+//                            wall.y = x * 100;
+//                            wall.width = labyrinth.wallsWidth;
+//                            wall.height = labyrinth.wallsHeight;
+//                            walls.add(wall);
+//                        }
+//                    }
+//                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -94,8 +94,7 @@ public class Client extends ApplicationAdapter {
                 Player obj = SerializationUtils.deserializePlayer(playerJson, Player.class);
                 if (obj == null) return;
                 //System.out.println("Player chegou: " + obj);
-                player = obj;
-                clientData = new ClientData(player);
+                clientData.player = obj;
                 // a lista de players sera atualizada pelo server, e não pelo Client que receberá em UpdatePlayers
             }
         } catch (IOException e) {
@@ -103,56 +102,39 @@ public class Client extends ApplicationAdapter {
         }
     }
 
-    public void updateClientData(){
-        try{
-            if(in.ready()){
+    public synchronized void updateClientData() {
+        try {
+            if (in.ready()) {
                 String serverDataJson = in.readLine();
                 ServerData serverData = SerializationUtils
                         .deserializeServerData(serverDataJson, ServerData.class);
-                this.playersMap = serverData.playersMap;
+                if(serverData.playersMap!=null){
+                    playersMap = serverData.playersMap;
+                }
+                if(serverData.playersMap.get(clientData.player.id)!=null) {
+                    System.out.println("PLAYER diferente de null"+ clientData.player.id);
+                    Player serverPlayer = serverData.playersMap.get(clientData.player.id);
+                    clientData.player.coins = serverPlayer.coins;
+                }
+                this.coin = serverData.coin; // objeto coin
             }
-        }catch(IOException e){
+            if(clientData.player!=null){
+                String clientDataJson = SerializationUtils.serializeClientData(clientData);
+                this.out.println(clientDataJson);
+            }
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    /*public void updatePlayers() {
-        // carregando os players do server
-        try {
-            if (in.ready()) {
-                String input = in.readLine();
-                //System.out.println("travou aqui: " + input);
-                if (input == null) return;
-                //System.out.println("saiu daaqui 1: " + input);
-                //System.out.println("nova informação dos players chegou");
-                String allPlayersJson = input;
-                //System.out.println("o que chegou no updatePLayers: " + allPlayersJson);
-                Class<? extends HashMap<String, Player>> classMap = (Class<? extends HashMap<String, Player>>) (new HashMap<String, Player>()).getClass();
-                Map<String, Player> allUpdatedPlayers = SerializationUtils.deserializePlayersMap(allPlayersJson, classMap);
-                // Depurar o conteúdo do LinkedTreeMap
-                playersMap = new HashMap<>();
-                // Continuar com a lógica de conversão para objetos Player
-                for (Map.Entry<String, Player> entry : allUpdatedPlayers.entrySet()) {
-                    Player p = entry.getValue();
-                    String playerId = entry.getKey();
-                    //System.out.println("player id: " + playerId);
-                    playersMap.put(playerId, p);
-                }
-            }
-        } catch (IOException e) {
-            //System.out.println("Entrouno catch update players");
-            e.printStackTrace();
-        }
-    } */
-
     public void update() {
         // roda apenas no inicio
-        if (labyrinth == null || player == null || playersMap == null) {
+        if (labyrinth == null || clientData.player == null || playersMap == null) {
             if (labyrinth == null) {
                 // PRIMEIRO dado enviado no create do server
                 createLabyrinth();
             }
-            if (player == null) {
+            if (clientData.player == null) {
                 // SEGUNDO dado enviado no create do server - Player com id da THREAD do server
                 createPlayer();
             }
@@ -161,31 +143,27 @@ public class Client extends ApplicationAdapter {
                 //updatePlayers();
                 updateClientData();
             }
-
         }
-        if (player != null) {
+        if (clientData.player != null) {
             //System.out.println("Testando input de movimento");
-            boolean moved = player.move();
+            boolean moved = clientData.player.move();
             if (moved) {
                 // envia dados se se moveu
-                if (player.body.x < 0)
-                    player.body.x = 0;
-                else if (player.body.x > cameraWidth)
-                    player.body.x = cameraWidth;
-                if (player.body.y < 0)
-                    player.body.y = 0;
-                else if (player.body.y > cameraHeight)
-                    player.body.y = cameraHeight;
-                clientData.player = this.player;
-                String clientDataJson = SerializationUtils.serializeClientData(clientData);
-                this.out.println(clientDataJson);
+                if (clientData.player.body.x < 0)
+                    clientData.player.body.x = 0;
+                else if (clientData.player.body.x + clientData.player.body.width > cameraWidth)
+                    clientData.player.body.x = cameraWidth - clientData.player.body.width;
+                if (clientData.player.body.y < 0)
+                    clientData.player.body.y = 0;
+                else if (clientData.player.body.y + clientData.player.body.height > cameraHeight)
+                    clientData.player.body.y = cameraHeight - clientData.player.body.height;
+                // clientData.player.body = player.body;
                 //String playerUpdated = SerializationUtils.serializePlayer(player);
                 //out.println(playerUpdated);
                 //System.out.println("Player enviou posição atual");
             }
         }
         if (playersMap != null)
-            //updatePlayers();
             updateClientData();
     }
 
@@ -193,18 +171,20 @@ public class Client extends ApplicationAdapter {
     public void render() {
         update();
         ScreenUtils.clear(0, 0, 0.1f, 1);
-        if (labyrinth != null && player != null && playersMap != null) {
+        if (labyrinth != null && clientData.player != null && playersMap != null) {
             camera.update();
             batch.setProjectionMatrix(camera.combined);
             batch.begin();
-            for (Rectangle wall : walls) {
-                batch.draw(wallImage, wall.x, wall.y);
-            }
+//            for (Rectangle wall : walls) {
+//                batch.draw(wallImage, wall.x, wall.y);
+//            }
             for (Player p : playersMap.values()) {
                 p.draw(batch);
             }
+            if (coin != null) {
+                coin.draw(batch);
+            }
             batch.end();
-            //System.out.println("CARREGOU O RENDER");
         }
     }
 

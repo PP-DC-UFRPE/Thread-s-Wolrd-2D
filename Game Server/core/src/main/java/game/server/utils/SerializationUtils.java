@@ -22,13 +22,13 @@ public class SerializationUtils {
         return gson.toJson(clientData);
     }
     public static <ServerData> ServerData deserializeServerData(String json, Class<ServerData> serverDataClass) {
-        Gson gson = new GsonBuilder().create();
+        Gson gson = new GsonBuilder().serializeNulls().create();
         //System.out.println("deserialize PlayersMap " + json);
         ServerData serverData = gson.fromJson(json, serverDataClass);
         return serverData; // devolve objeto com coins e Map com todos os players
     }
     public static <ClientData> ClientData deserializeClientData(String json, Class<ClientData> clientDataClass) {
-        Gson gson = new GsonBuilder().create();
+        Gson gson = new GsonBuilder().serializeNulls().create();
         //System.out.println("deserialize PlayersMap " + json);
         ClientData clientData = gson.fromJson(json, clientDataClass);
         return clientData; // devolve objeto com coins e Map com todos os players
@@ -52,11 +52,7 @@ public class SerializationUtils {
     }
 
     public static String serializePlayersMap(HashMap<String, Player> playersMap) {
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<Map<String, Player>>() {
-                }
-                        .getType(), new MapPlayerAdapter())
-                .create();
+        Gson gson = new GsonBuilder().create();
 //        System.out.println("Serialize playersMap: " + playersMap.toString());
         String json = gson.toJson(playersMap);
 //        System.out.println("Serialize versao json " + json);
@@ -80,11 +76,7 @@ public class SerializationUtils {
     }
 
     public static Map<String, Player> deserializePlayersMap(String json, Class<? extends Map<String, Player>> playersMapClass) {
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<Map<String, Player>>() {
-                }
-                        .getType(), new MapPlayerAdapter())
-                .create();
+        Gson gson = new GsonBuilder().create();
 //        System.out.println("deserialize " + json);
         Map<String, Player> playersMap = gson.fromJson(json, playersMapClass);
 //        System.out.println("Serialize versao objeto " + playersMap);

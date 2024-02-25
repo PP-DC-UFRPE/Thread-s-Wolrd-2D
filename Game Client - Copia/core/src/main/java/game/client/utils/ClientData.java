@@ -8,4 +8,7 @@ public class ClientData {
     public ClientData(Player player) {
         this.player = player;
     }
+    public ClientData() {
+
+    }
 }

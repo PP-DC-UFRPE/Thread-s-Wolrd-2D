@@ -14,21 +14,24 @@ public class SerializationUtils {
     // o server recebe(desserializa) clientData e manda(serializa) serverData
     // o client recebe(desserializa) serverData e manda(serializa) clientData
     public static String serializeServerData(ServerData serverData) {
-        Gson gson = new GsonBuilder().serializeNulls().create();
+        Gson gson = new GsonBuilder().serializeNulls().serializeNulls().create();
         return gson.toJson(serverData);
     }
+
     public static String serializeClientData(ClientData clientData) {
-        Gson gson = new GsonBuilder().serializeNulls().create();
+        Gson gson = new GsonBuilder().serializeNulls().serializeNulls().create();
         return gson.toJson(clientData);
     }
+
     public static <ServerData> ServerData deserializeServerData(String json, Class<ServerData> serverDataClass) {
-        Gson gson = new GsonBuilder().create();
+        Gson gson = new GsonBuilder().serializeNulls().create();
         //System.out.println("deserialize PlayersMap " + json);
         ServerData serverData = gson.fromJson(json, serverDataClass);
         return serverData; // devolve objeto com coins e Map com todos os players
     }
+
     public static <ClientData> ClientData deserializeClientData(String json, Class<ClientData> clientDataClass) {
-        Gson gson = new GsonBuilder().create();
+        Gson gson = new GsonBuilder().serializeNulls().create();
         //System.out.println("deserialize PlayersMap " + json);
         ClientData clientData = gson.fromJson(json, clientDataClass);
         return clientData; // devolve objeto com coins e Map com todos os players
@@ -51,9 +54,6 @@ public class SerializationUtils {
 
     public static String serializePlayersMap(Map<String, Player> playersMap) {
         Gson gson = new GsonBuilder().serializeNulls()
-                .registerTypeAdapter(new TypeToken<Map<String, Player>>() {
-                }
-                        .getType(), new MapPlayerAdapter())
                 .create();
         String json = gson.toJson(playersMap);
         //System.out.println("Serialize versao json do playertsMap" + json);
@@ -75,10 +75,7 @@ public class SerializationUtils {
     }
 
     public static Map<String, Player> deserializePlayersMap(String json, Class<? extends HashMap<String, Player>> playersMapClass) {
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(new TypeToken<Map<String, Player>>() {
-                }.getType(), new MapPlayerAdapter())
-                .create();
+        Gson gson = new GsonBuilder().create();
         //System.out.println("deserialize PlayersMap " + json);
         Map<String, Player> playersWithLinkedTreeMap = gson.fromJson(json, playersMapClass);
         Map<String, Player> result = new HashMap<>();
@@ -90,6 +87,7 @@ public class SerializationUtils {
         }
         return result;
     }
+
     public static String serialize(Object object) {
         Gson gson = new GsonBuilder().serializeNulls().create();
         //System.out.println("Serialize " + object.toString());

@@ -29,8 +29,8 @@ public class Player {
         Vector3 initialPosition = labyrinth.randomPosition();
         this.body.x = initialPosition.x;
         this.body.y = initialPosition.y;
-        this.body.width = 16;
-        this.body.height = 16;
+        this.body.width = 64;
+        this.body.height = 64;
     }
 
     public void move() {

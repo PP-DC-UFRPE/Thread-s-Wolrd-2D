@@ -19,6 +19,8 @@ public class Player {
     public Rectangle body;
     @Expose(deserialize = true)
     public String id;
+    @Expose(deserialize = true)
+    public Integer coins = 0;
 
     public Player(Labyrinth labyrinth) {
         this.life = 100;

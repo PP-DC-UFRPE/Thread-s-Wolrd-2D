@@ -1,7 +1,9 @@
 package main.java.game.server;
 
 import com.badlogic.gdx.ApplicationAdapter;
+import main.java.game.server.utils.ClientData;
 import main.java.game.server.utils.SerializationUtils;
+import main.java.game.server.utils.ServerData;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,24 +22,27 @@ public class Server extends ApplicationAdapter {
     public List<ClientHandler> clients = new ArrayList<>();
     public Map<String, Player> playersMap = new HashMap<>();
 
+    public Integer coinsLimit = 10;
+    public ServerData serverData;
+
     public Server() {
         this.start();
     }
 
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-            System.out.println("Server started on port " + PORT);
+            //System.out.println("Server started on port " + PORT);
             while (true) {
                 Socket clientSocket = serverSocket.accept(); // fica voltando para cá a cada novo accept de socket
-                System.out.println("passou do accept");
-                System.out.println("New client connected: " + clientSocket);
+                // System.out.println("passou do accept");
+                // System.out.println("New client connected: " + clientSocket);
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
                 clients.add(clientHandler);
                 // enviando labirinto
                 clientHandler.start();
             }
         } catch (IOException e) {
-            System.out.println("catch do server socket");
+            //System.out.println("catch do server socket");
             e.printStackTrace();
         }
     }
@@ -55,7 +60,7 @@ public class Server extends ApplicationAdapter {
         @Override
         public void run() {
             try {
-                System.out.println("ENTRO no TRY DO RUN - inicio da buffer de input e do stream de saida");
+                //System.out.println("ENTRO no TRY DO RUN - inicio da buffer de input e do stream de saida");
                 this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 this.out = new PrintWriter(socket.getOutputStream(), true);
 
@@ -70,46 +75,72 @@ public class Server extends ApplicationAdapter {
                 String jsonPlayer = SerializationUtils.serializePlayer(player);
                 this.out.println(jsonPlayer); // enviando player para o cliente fazendo login
 
-                //enviando a lista de players para p novo client
+
+                // enviando primeiros dados do servidor para o client
                 playersMap.put(player.id, player);// Atualiza o jogador no HashMap
-                String playersMapJsonInicial = SerializationUtils.serializePlayersMap(new HashMap<>(playersMap));
-                this.out.println(playersMapJsonInicial);
+                serverData = new ServerData(playersMap);
+                String serverDataJson = SerializationUtils.serializeServerData(serverData);
+                this.out.println(serverDataJson);
                 while (true) {
-                    updatePlayers();
+                    updateServerData();
                 }
                 // update player aguarda inputs nos clients e redistribui as atualizações
             } catch (IOException e) {
-                System.out.println("Caiu no catch do CLient hanler");
+                // System.out.println("Caiu no catch do CLient hanler");
                 e.printStackTrace();
             } finally {
                 try {
                     clients.remove(this);
                     playersMap.remove(clientPlayer.id);
+                    serverData.playersMap = playersMap;
                     socket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }
-
-        private void updatePlayers() {
+        private synchronized void updateServerData() {
             try {
                 if (in.ready()) {
-                    String input = in.readLine();
-                    // Processar os dados recebidos
-                    System.out.println("Rodando atualização de jogadores");
-                    Player updatedPlayer = SerializationUtils.deserializePlayer(input, Player.class);
-                    playersMap.put(updatedPlayer.id, updatedPlayer);
-                    String playersMapJson = SerializationUtils.serializePlayersMap(new HashMap<>(playersMap));
+                    String clientDataJson = in.readLine();
+                    ClientData clientData = SerializationUtils.deserializeClientData(clientDataJson, ClientData.class);
+                    playersMap.put(clientData.player.id, clientData.player);
+                    if(clientData.player.coins >= coinsLimit){
+                        serverData.winner = clientData.player.id;
+                    }
+                    serverData = new ServerData(playersMap);
+                    String serverDataJson = SerializationUtils.serializeServerData(serverData);
                     for (ClientHandler client : clients) {
-                        client.out.println(playersMapJson);
+                        client.out.println(serverDataJson);
+                        // envia inclusive para quem enviou a informaçõa incial
                     }
                 }
             } catch (IOException e) {
-                // A conexão foi fechada ou ocorreu um erro de comunicação
-                System.out.println("Entrou no CATCH de UpdatePlayer");
                 e.printStackTrace();
             }
         }
     }
+//        private void updatePlayers() {
+//            try {
+//                if (in.ready()) {
+//                    String input = in.readLine();
+//                    // Processar os dados recebidos
+//                    // System.out.println("Rodando atualização de jogadores");
+//                    Player updatedPlayer = SerializationUtils.deserializePlayer(input, Player.class);
+//                    playersMap.put(updatedPlayer.id, updatedPlayer);
+//                    String playersMapJson = SerializationUtils.serializePlayersMap(new HashMap<>(playersMap));
+//                    for (ClientHandler client : clients) {
+//                        client.out.println(playersMapJson);
+//                        if (updatedPlayer.moedas >= 23) {
+//
+//                        }
+//                    }
+//                }
+//            } catch (IOException e) {
+//                // A conexão foi fechada ou ocorreu um erro de comunicação
+//                //System.out.println("Entrou no CATCH de UpdatePlayer");
+//                e.printStackTrace();
+//            }
+//        }
+//    }//
 }

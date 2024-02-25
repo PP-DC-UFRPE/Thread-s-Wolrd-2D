@@ -2,28 +2,50 @@ package main.java.game.client.utils;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.internal.LinkedTreeMap;
 import com.google.gson.reflect.TypeToken;
 import main.java.game.client.Labyrinth;
 import main.java.game.client.Player;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 public class SerializationUtils {
+    // loop do jogo usa esse SERIALIZADORES APENAS -
+    // o server recebe(desserializa) clientData e manda(serializa) serverData
+    // o client recebe(desserializa) serverData e manda(serializa) clientData
+    public static String serializeServerData(ServerData serverData) {
+        Gson gson = new GsonBuilder().serializeNulls().create();
+        return gson.toJson(serverData);
+    }
+    public static String serializeClientData(ClientData clientData) {
+        Gson gson = new GsonBuilder().serializeNulls().create();
+        return gson.toJson(clientData);
+    }
+    public static <ServerData> ServerData deserializeServerData(String json, Class<ServerData> serverDataClass) {
+        Gson gson = new GsonBuilder().create();
+        //System.out.println("deserialize PlayersMap " + json);
+        ServerData serverData = gson.fromJson(json, serverDataClass);
+        return serverData; // devolve objeto com coins e Map com todos os players
+    }
+    public static <ClientData> ClientData deserializeClientData(String json, Class<ClientData> clientDataClass) {
+        Gson gson = new GsonBuilder().create();
+        //System.out.println("deserialize PlayersMap " + json);
+        ClientData clientData = gson.fromJson(json, clientDataClass);
+        return clientData; // devolve objeto com coins e Map com todos os players
+    }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     public static String serializePlayer(Player player) {
         Gson gson = new GsonBuilder().serializeNulls().create();
         String json = gson.toJson(player);
-        System.out.println("Serialize versao json do player" + json);
+        //System.out.println("Serialize versao json do player" + json);
         return json;
     }
 
     public static String serializeLabyrinth(Labyrinth labyrinth) {
         Gson gson = new GsonBuilder().serializeNulls().create();
         String json = gson.toJson(labyrinth);
-        System.out.println("Serialize versao json labyrinth " + json);
+        //System.out.println("Serialize versao json labyrinth " + json);
         return json;
     }
 
@@ -34,20 +56,20 @@ public class SerializationUtils {
                         .getType(), new MapPlayerAdapter())
                 .create();
         String json = gson.toJson(playersMap);
-        System.out.println("Serialize versao json do playertsMap" + json);
+        //System.out.println("Serialize versao json do playertsMap" + json);
         return json;
     }
 
     public static <Labyrinth> Labyrinth deserializeLabyrinth(String json, Class<Labyrinth> labyrinthClass) {
         Gson gson = new GsonBuilder().create();
-        System.out.println("deserialize Labyrinth " + json);
+        //System.out.println("deserialize Labyrinth " + json);
         Labyrinth labyrinth = gson.fromJson(json, labyrinthClass);
         return labyrinth;
     }
 
     public static <Player> Player deserializePlayer(String json, Class<Player> playerClass) {
         Gson gson = new GsonBuilder().create();
-        System.out.println("deserialize player" + json);
+        //System.out.println("deserialize player" + json);
         Player player = gson.fromJson(json, playerClass);
         return player;
     }
@@ -57,7 +79,7 @@ public class SerializationUtils {
                 .registerTypeAdapter(new TypeToken<Map<String, Player>>() {
                 }.getType(), new MapPlayerAdapter())
                 .create();
-        System.out.println("deserialize PlayersMap " + json);
+        //System.out.println("deserialize PlayersMap " + json);
         Map<String, Player> playersWithLinkedTreeMap = gson.fromJson(json, playersMapClass);
         Map<String, Player> result = new HashMap<>();
         for (Map.Entry<String, Player> entry : playersWithLinkedTreeMap.entrySet()) {
@@ -68,12 +90,11 @@ public class SerializationUtils {
         }
         return result;
     }
-
     public static String serialize(Object object) {
         Gson gson = new GsonBuilder().serializeNulls().create();
-        System.out.println("Serialize " + object.toString());
+        //System.out.println("Serialize " + object.toString());
         String json = gson.toJson(object);
-        System.out.println("Serialize versao json " + json);
+        //System.out.println("Serialize versao json " + json);
         return json;
     }
     // Desserialize um JSON para objeto

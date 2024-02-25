@@ -19,12 +19,14 @@ public class Player {
     @Expose(deserialize = true)
     public String id;
 
+    public Integer coins = 0;
+
     public Player(Labyrinth labyrinth) {
         this.body = new Rectangle();
         this.body.x = position.x;
         this.body.y = position.y;
-        this.body.width = 16;
-        this.body.height = 16;
+        this.body.width = 64;
+        this.body.height = 64;
         this.life = 100;
     }
 
@@ -32,8 +34,8 @@ public class Player {
         this.body = new Rectangle();
         this.body.x = position.x;
         this.body.y = position.y;
-        this.body.width = 16;
-        this.body.height = 16;
+        this.body.width = 646;
+        this.body.height = 64;
         this.life = 100;
     }
 

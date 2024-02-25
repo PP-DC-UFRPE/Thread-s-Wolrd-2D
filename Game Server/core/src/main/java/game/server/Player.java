@@ -19,6 +19,8 @@ public class Player {
     public Rectangle body;
     @Expose(deserialize = true)
     public String id;
+    @Expose(deserialize = true)
+    public Integer coins = 0;
 
     public Player(Labyrinth labyrinth) {
         this.life = 100;
@@ -27,8 +29,8 @@ public class Player {
         Vector3 initialPosition = labyrinth.randomPosition();
         this.body.x = initialPosition.x;
         this.body.y = initialPosition.y;
-        this.body.width = 16;
-        this.body.height = 16;
+        this.body.width = 64;
+        this.body.height = 64;
     }
 
     public void move() {

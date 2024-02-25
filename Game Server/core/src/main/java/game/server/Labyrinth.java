@@ -3,38 +3,32 @@ package main.java.game.server;
 import com.badlogic.gdx.math.Vector3;
 import com.google.gson.annotations.Expose;
 
+import java.util.Random;
+
 public class Labyrinth {
-    @Expose(deserialize = true)
-    public int width, height;
+
     @Expose(deserialize = true)
     public boolean[][] walls;
+
     @Expose(deserialize = true)
-    public Vector3 exit;
+    public int wallsWidth = 64, wallsHeight = 64;
 
-    public Labyrinth(int width, int height) {
-        this.width = width;
-        this.height = height;
-        walls = new boolean[width][height];
-        // Crie um padrão em zigue-zague
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                if (x % 3 == 0 && y % 3 == 0) {
-                    walls[x][y] = true;
-                }
-            }
-        }
-
-        exit = new Vector3(width - 2, height - 2, 0); // por exemplo
+    public Labyrinth(float width, float height) {
+//        walls = new boolean[(int) width / 100][(int) height / 100];
+//        // Crie um padrão em zigue-zague
+//        Random random = new Random();
+//
+//        for (int i = 0; i < 15; i++) {
+//            int randomX = random.nextInt((int) width / 100);
+//            int randomY = random.nextInt((int) height / 100);
+//            walls[randomX][randomY] = true;
+//        }
     }
 
     public Vector3 randomPosition() {
-        int x, y;
-        x = 40;
-        y = 50;
-//        do {
-//            x = random.nextInt(width);
-//            y = random.nextInt(height);
-//        } while (walls[x][y]); // Garante que a posição não está dentro de uma parede
-        return new Vector3(x, y, 0);
+        Random random = new Random();
+        int randomX = random.nextInt(1280 - 64) + 64;
+        int randomY = random.nextInt(720 - 64) + 64;
+        return new Vector3(randomX, randomY, 0);
     }
 }

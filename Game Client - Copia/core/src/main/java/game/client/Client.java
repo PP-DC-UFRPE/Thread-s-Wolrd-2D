@@ -29,6 +29,7 @@ public class Client extends ApplicationAdapter {
     public OrthographicCamera camera;
     public SpriteBatch batch;
     public Texture wallImage;
+    public Texture backgroundTexture;
     public Array<Rectangle> walls = null;
     public float cameraWidth = 1280;
     public float cameraHeight = 720;
@@ -44,6 +45,7 @@ public class Client extends ApplicationAdapter {
     public PrintWriter out;
     public String winner;
 
+
     @Override
     public void create() {
         try {
@@ -53,7 +55,9 @@ public class Client extends ApplicationAdapter {
             camera.setToOrtho(false, cameraWidth, cameraHeight);
             batch = new SpriteBatch();
             font = new BitmapFont();
+            font.getData().setScale(1.5f);
             layout = new GlyphLayout();
+            backgroundTexture = new Texture(Gdx.files.internal("background.png"));
 
             clientData = new ClientData();
             socket = new Socket(SERVERADRESS, PORT); // Conecta ao localhost na porta 8080
@@ -125,28 +129,32 @@ public class Client extends ApplicationAdapter {
 
     @Override
     public void render() {
+        ScreenUtils.clear(0, 0, 0f, 1);
+        batch.begin();
+        batch.draw(backgroundTexture, 0, 0, cameraWidth, cameraHeight);
         if (!gamePaused) {
             update();
-            ScreenUtils.clear(0, 0, 0.1f, 1);
             if (labyrinth != null && clientData.player != null && playersMap != null) {
                 camera.update();
                 batch.setProjectionMatrix(camera.combined);
-                batch.begin();
 //            for (Rectangle wall : walls) {
 //                batch.draw(wallImage, wall.x, wall.y);
 //            }
                 for (Player p : playersMap.values()) {
+                    if (p.id.equals(clientData.player.id))
+                        font.setColor(25, 25, 255, 1);
+                    else
+                        font.setColor(255, 25, 25, 1);
                     font.draw(batch, p.id, p.body.x, p.body.y + 74);
+                    font.setColor(255, 255, 0, 1);
                     font.draw(batch, p.coins.toString(), p.body.x, p.body.y);
                     p.draw(batch);
                 }
                 if (coin != null) {
                     coin.draw(batch);
                 }
-                batch.end();
             }
         } else {
-            ScreenUtils.clear(0, 0, 0.1f, 1);
             String endGameText;
             if (clientData.player.id.equals(winner)) {
                 endGameText = "Parabéns! Você é o vencedor: " + winner;
@@ -158,15 +166,17 @@ public class Client extends ApplicationAdapter {
             System.out.println(endGameText);
             float textX = (cameraWidth - layout.width) / 2;
             float textY = (cameraHeight - layout.height) / 2;
-            batch.begin();
+            font.setColor(255, 255, 255, 1);
+            font.getData().setScale(2f);
             font.draw(batch, endGameText, textX, textY);
-            batch.end();
         }
+        batch.end();
     }
 
     public void dispose() {
         wallImage.dispose();
         batch.dispose();
+        backgroundTexture.dispose();
         font.dispose();
         if (socket != null) {
             try {

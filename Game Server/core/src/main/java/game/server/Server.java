@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends ApplicationAdapter {
     public static final int PORT = 3000;
@@ -30,7 +31,7 @@ public class Server extends ApplicationAdapter {
     public boolean endGame = false;
 
     public Server() {
-        serverData = new ServerData(new HashMap<>());
+        serverData = new ServerData(new ConcurrentHashMap<>());
         labyrinth = new Labyrinth(cameraWidth, cameraHeight); // Supondo que você tenha um construtor padrão para Labyrinth
         serverData.labyrinth = labyrinth;
         resourcesHandler = new ResourcesHandler();
@@ -76,9 +77,9 @@ public class Server extends ApplicationAdapter {
                     coinFound = true;
 
                     player.coins = player.coins + 1;
-                    synchronized (serverData){
-                        serverData.playersMap.put(player.id, player);
-                    }
+                    // synchronized (serverData) { // players mao é HashMapConcorrent, nao precisa usar synchronized
+                    serverData.playersMap.put(player.id, player);
+                    //  }
 
 //                    String serverDataJson = SerializationUtils.serializeServerData(serverData);
 //                    for (ClientHandler client : clients) {
@@ -195,16 +196,15 @@ public class Server extends ApplicationAdapter {
             }
         }
 
-        private void updateServerData() {
+        private synchronized void updateServerData() {
             try {
                 if (in.ready()) {
                     String clientDataJson = in.readLine();
                     ClientData clientData = SerializationUtils.deserializeClientData(clientDataJson, ClientData.class);
-                    synchronized (serverData){
-                        Player p = serverData.playersMap.get(clientData.player.id);
-                        clientData.player.coins = p.coins; // adcionando coins se existirem
-                        serverData.playersMap.put(clientData.player.id, clientData.player);
-                    }
+                    Player p = serverData.playersMap.get(clientData.player.id);
+                    clientData.player.coins = p.coins; // adcionando coins se existirem
+                    serverData.playersMap.put(clientData.player.id, clientData.player);
+
                     String serverDataJson = SerializationUtils.serializeServerData(serverData);
                     for (ClientHandler client : clients) {
                         client.out.println(serverDataJson);

@@ -6,15 +6,16 @@ import main.java.game.client.Player;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 public class ServerData {
-    public Map<String, Player> playersMap = new HashMap<>();
+    public Map<String, Player> playersMap;
     public String winner = null;
     public Coin coin = null;
     public Labyrinth labyrinth = null;
     public Player lastPlayer = null;
 
-    public ServerData(Map<String, Player> playersMap) {
+    public ServerData(ConcurrentMap<String, Player> playersMap) {
         this.playersMap = playersMap;
     }
 }

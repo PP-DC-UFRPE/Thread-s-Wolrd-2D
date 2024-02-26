@@ -4,6 +4,8 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
@@ -21,6 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Client extends ApplicationAdapter {
+    private boolean gamePaused = false;
+    private BitmapFont font;
+    private GlyphLayout layout;
     public OrthographicCamera camera;
     public SpriteBatch batch;
     public Texture wallImage;
@@ -37,6 +42,7 @@ public class Client extends ApplicationAdapter {
     public Socket socket;
     public BufferedReader in;
     public PrintWriter out;
+    public String winner;
 
     @Override
     public void create() {
@@ -46,6 +52,8 @@ public class Client extends ApplicationAdapter {
             camera = new OrthographicCamera();
             camera.setToOrtho(false, cameraWidth, cameraHeight);
             batch = new SpriteBatch();
+            font = new BitmapFont();
+            layout = new GlyphLayout();
 
             clientData = new ClientData();
             socket = new Socket(SERVERADRESS, PORT); // Conecta ao localhost na porta 8080
@@ -58,27 +66,35 @@ public class Client extends ApplicationAdapter {
 
     }
 
-    public void createLabyrinth() {
+    public void updateClientData() {
         try {
             if (in.ready()) {
-                String Labyrinthjson = in.readLine();
-                if (Labyrinthjson == null) return;
-                Labyrinth obj = SerializationUtils.deserializeLabyrinth(Labyrinthjson, Labyrinth.class);
-                if (obj == null) return;
-                //System.out.println("Labirinto chegou: " + obj);
-                labyrinth = obj;
-//                walls = new Array<>();
-//                for (int x = 0; x < 12; x++) {
-//                    for (int y = 0; y < 7; y++) {
-//                        if (labyrinth.walls[x][y]) {
-//                            Rectangle wall = new Rectangle();
-//                            wall.x = x * 100;
-//                            wall.y = x * 100;
-//                            wall.width = labyrinth.wallsWidth;
-//                            wall.height = labyrinth.wallsHeight;
-//                            walls.add(wall);
-//                        }
+                String serverDataJson = in.readLine();
+                ServerData serverData = SerializationUtils
+                        .deserializeServerData(serverDataJson, ServerData.class);
+                if (labyrinth == null && clientData.player == null) {
+                    labyrinth = serverData.labyrinth;
+                    clientData.player = serverData.lastPlayer;
+                }
+                if (serverData.playersMap != null) {
+                    playersMap = serverData.playersMap;
+//                    for (Player p : serverData.playersMap.values()) {
+//                        System.out.println("player.id: " + p.id);
 //                    }
+                    Player serverPlayer = serverData.playersMap.get(clientData.player.id);
+                    if (serverPlayer != null) {
+                        clientData.player.coins = serverPlayer.coins;
+                    }
+                }
+                this.coin = serverData.coin; // objeto coin
+                if (serverData.winner != null) {
+                    System.out.println("Vencedor player: " + serverData.winner);
+                    winner = serverData.winner;
+                    gamePaused = true; // pausar o Jogo AGORA
+                }
+//                if (clientData.player != null) {
+//                    String clientDataJson = SerializationUtils.serializeClientData(clientData);
+//                    this.out.println(clientDataJson);
 //                }
             }
         } catch (IOException e) {
@@ -86,64 +102,7 @@ public class Client extends ApplicationAdapter {
         }
     }
 
-    public void createPlayer() {
-        try {
-            if (in.ready()) {
-                String playerJson = in.readLine();
-                if (playerJson == null) return;
-                Player obj = SerializationUtils.deserializePlayer(playerJson, Player.class);
-                if (obj == null) return;
-                //System.out.println("Player chegou: " + obj);
-                clientData.player = obj;
-                // a lista de players sera atualizada pelo server, e não pelo Client que receberá em UpdatePlayers
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public synchronized void updateClientData() {
-        try {
-            if (in.ready()) {
-                String serverDataJson = in.readLine();
-                ServerData serverData = SerializationUtils
-                        .deserializeServerData(serverDataJson, ServerData.class);
-                if(serverData.playersMap!=null){
-                    playersMap = serverData.playersMap;
-                }
-                if(serverData.playersMap.get(clientData.player.id)!=null) {
-                    System.out.println("PLAYER diferente de null"+ clientData.player.id);
-                    Player serverPlayer = serverData.playersMap.get(clientData.player.id);
-                    clientData.player.coins = serverPlayer.coins;
-                }
-                this.coin = serverData.coin; // objeto coin
-            }
-            if(clientData.player!=null){
-                String clientDataJson = SerializationUtils.serializeClientData(clientData);
-                this.out.println(clientDataJson);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void update() {
-        // roda apenas no inicio
-        if (labyrinth == null || clientData.player == null || playersMap == null) {
-            if (labyrinth == null) {
-                // PRIMEIRO dado enviado no create do server
-                createLabyrinth();
-            }
-            if (clientData.player == null) {
-                // SEGUNDO dado enviado no create do server - Player com id da THREAD do server
-                createPlayer();
-            }
-            if (playersMap == null) {
-                // TERCEIRO dado enviado no create do server - HashMap com Players atualizando players no client
-                //updatePlayers();
-                updateClientData();
-            }
-        }
         if (clientData.player != null) {
             //System.out.println("Testando input de movimento");
             boolean moved = clientData.player.move();
@@ -157,33 +116,50 @@ public class Client extends ApplicationAdapter {
                     clientData.player.body.y = 0;
                 else if (clientData.player.body.y + clientData.player.body.height > cameraHeight)
                     clientData.player.body.y = cameraHeight - clientData.player.body.height;
-                // clientData.player.body = player.body;
-                //String playerUpdated = SerializationUtils.serializePlayer(player);
-                //out.println(playerUpdated);
-                //System.out.println("Player enviou posição atual");
+                String clientDataJson = SerializationUtils.serializeClientData(clientData);
+                out.println(clientDataJson);
             }
         }
-        if (playersMap != null)
-            updateClientData();
+        updateClientData();
     }
 
     @Override
     public void render() {
-        update();
-        ScreenUtils.clear(0, 0, 0.1f, 1);
-        if (labyrinth != null && clientData.player != null && playersMap != null) {
-            camera.update();
-            batch.setProjectionMatrix(camera.combined);
-            batch.begin();
+        if (!gamePaused) {
+            update();
+            ScreenUtils.clear(0, 0, 0.1f, 1);
+            if (labyrinth != null && clientData.player != null && playersMap != null) {
+                camera.update();
+                batch.setProjectionMatrix(camera.combined);
+                batch.begin();
 //            for (Rectangle wall : walls) {
 //                batch.draw(wallImage, wall.x, wall.y);
 //            }
-            for (Player p : playersMap.values()) {
-                p.draw(batch);
+                for (Player p : playersMap.values()) {
+                    font.draw(batch, p.id, p.body.x, p.body.y + 74);
+                    font.draw(batch, p.coins.toString(), p.body.x, p.body.y);
+                    p.draw(batch);
+                }
+                if (coin != null) {
+                    coin.draw(batch);
+                }
+                batch.end();
             }
-            if (coin != null) {
-                coin.draw(batch);
+        } else {
+            ScreenUtils.clear(0, 0, 0.1f, 1);
+            String endGameText;
+            if (clientData.player.id.equals(winner)) {
+                endGameText = "Parabéns! Você é o vencedor: " + winner;
+                layout.setText(font, endGameText);
+            } else {
+                endGameText = "Você perdeu! o vencedor é: " + winner;
+                layout.setText(font, endGameText);
             }
+            System.out.println(endGameText);
+            float textX = (cameraWidth - layout.width) / 2;
+            float textY = (cameraHeight - layout.height) / 2;
+            batch.begin();
+            font.draw(batch, endGameText, textX, textY);
             batch.end();
         }
     }
@@ -191,6 +167,7 @@ public class Client extends ApplicationAdapter {
     public void dispose() {
         wallImage.dispose();
         batch.dispose();
+        font.dispose();
         if (socket != null) {
             try {
                 socket.close();

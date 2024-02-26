@@ -27,6 +27,7 @@ public class Server extends ApplicationAdapter {
     public float cameraWidth = 1280;
     public float cameraHeight = 720;
     public ResourcesHandler resourcesHandler = null;
+    public boolean endGame = false;
 
     public Server() {
         serverData = new ServerData(new HashMap<>());
@@ -62,7 +63,7 @@ public class Server extends ApplicationAdapter {
             System.out.println("Entrou no Resource Handler");
         }
 
-        public synchronized boolean checkCoinFound() {
+        public boolean checkCoinFound() {
             boolean coinFound = false;
             System.out.println("checkando colisão com a Coin");
             for (Map.Entry<String, Player> entry : serverData.playersMap.entrySet()) {
@@ -75,12 +76,15 @@ public class Server extends ApplicationAdapter {
                     coinFound = true;
 
                     player.coins = player.coins + 1;
-                    serverData.playersMap.put(player.id, player);
-                    String serverDataJson = SerializationUtils.serializeServerData(serverData);
-                    for (ClientHandler client : clients) {
-                        client.out.println(serverDataJson);
-                        // envia inclusive para quem enviou a informaçõa incial
+                    synchronized (serverData){
+                        serverData.playersMap.put(player.id, player);
                     }
+
+//                    String serverDataJson = SerializationUtils.serializeServerData(serverData);
+//                    for (ClientHandler client : clients) {
+//                        client.out.println(serverDataJson);
+//                        // envia inclusive para quem enviou a informaçõa incial
+//                    }
                     System.out.println("Coins: " + player.coins);
                     System.out.println("Colidiu com a Coin");
                     System.out.println("coin x - " + serverData.coin.body.x);
@@ -95,7 +99,7 @@ public class Server extends ApplicationAdapter {
         public void run() {
             System.out.println("Entrou no while");
 
-            while (serverData.winner == null) {
+            while (!endGame) {
                 while (serverData.coin != null) {
                     System.out.println("no checkCoinFound");
                     if (checkCoinFound()) {
@@ -104,6 +108,11 @@ public class Server extends ApplicationAdapter {
                         for (Player player : serverData.playersMap.values()) {
                             if (player.coins >= coinsLimit) {
                                 serverData.winner = player.id;
+                                String serveDataJson = SerializationUtils.serializeServerData(serverData);
+                                for (ClientHandler client : clients) {
+                                    client.out.println(serveDataJson);
+                                }
+                                endGame = true;
                             }
                         }
 //                        for (ClientHandler client : clients) {
@@ -114,7 +123,7 @@ public class Server extends ApplicationAdapter {
                     }
                 }
                 try {
-                    if (!coinSent && serverData.winner == null) {
+                    if (!coinSent && !endGame) {
                         Thread.sleep(2000);
                         this.sendCoin();
                         coinSent = true;
@@ -127,16 +136,16 @@ public class Server extends ApplicationAdapter {
             }
         }
 
-        public synchronized void sendCoin() {
+        public void sendCoin() {
             Random random = new Random();
-            int randomX = random.nextInt(1280 - 64) + 64;
-            int randomY = random.nextInt(720 - 64) + 64;
+            int randomX = random.nextInt(1280 - 64);
+            int randomY = random.nextInt(720 - 64);
             serverData.coin = new Coin(randomX, randomY);
-//            String serveDataJson = SerializationUtils.serializeServerData(serverData);
+            String serveDataJson = SerializationUtils.serializeServerData(serverData);
 //            // enviando a todos os clients
-//            for (ClientHandler client : clients) {
-//                client.out.println(serveDataJson);
-//            }
+            for (ClientHandler client : clients) {
+                client.out.println(serveDataJson);
+            }
         }
     }
 
@@ -156,27 +165,22 @@ public class Server extends ApplicationAdapter {
                 //System.out.println("ENTRO no TRY DO RUN - inicio da buffer de input e do stream de saida");
                 this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 this.out = new PrintWriter(socket.getOutputStream(), true);
-
-                // enviando o labirinto ao client
-                String jsonLabyrinth = SerializationUtils.serializeLabyrinth(labyrinth);
-                this.out.println(jsonLabyrinth);
-
-                // enviando player ao client
+                // novo player do client
                 Player player = new Player(labyrinth);
                 this.clientPlayer = player;
-                String jsonPlayer = SerializationUtils.serializePlayer(player);
-                this.out.println(jsonPlayer); // enviando player para o cliente fazendo login
-
+                serverData.lastPlayer = player;
                 // enviando primeiros dados do servidor para o client
                 serverData.playersMap.put(player.id, player);// Atualiza o jogador no HashMap
                 String serverDataJson = SerializationUtils.serializeServerData(serverData);
-                this.out.println(serverDataJson);
+                for (ClientHandler c : clients) {
+                    c.out.println(serverDataJson);// atualizando novo jogador
+                }
                 while (true) {
                     updateServerData();
-                    if (serverData.winner != null)
-                        break;
+                    if (endGame) {
+                        System.out.println("Fim de jogo! Vencedor: " + serverData.winner);
+                    }
                 }
-                System.out.println("Fim de jogo! Vencedor: " + serverData.winner);
             } catch (IOException e) {
                 // System.out.println("Caiu no catch do CLient hanler");
                 e.printStackTrace();
@@ -191,18 +195,20 @@ public class Server extends ApplicationAdapter {
             }
         }
 
-        private synchronized void updateServerData() {
+        private void updateServerData() {
             try {
                 if (in.ready()) {
                     String clientDataJson = in.readLine();
                     ClientData clientData = SerializationUtils.deserializeClientData(clientDataJson, ClientData.class);
-
-                    Player p = serverData.playersMap.get(clientData.player.id);
-                    clientData.player.coins = p.coins; // adcionando coins se existirem
-                    serverData.playersMap.put(clientData.player.id, clientData.player);
+                    synchronized (serverData){
+                        Player p = serverData.playersMap.get(clientData.player.id);
+                        clientData.player.coins = p.coins; // adcionando coins se existirem
+                        serverData.playersMap.put(clientData.player.id, clientData.player);
+                    }
                     String serverDataJson = SerializationUtils.serializeServerData(serverData);
                     for (ClientHandler client : clients) {
                         client.out.println(serverDataJson);
+//                        System.out.println(client.getId());
                         // envia inclusive para quem enviou a informaçõa incial
                     }
                 }

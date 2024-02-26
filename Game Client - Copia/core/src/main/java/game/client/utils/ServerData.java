@@ -12,6 +12,7 @@ public class ServerData {
     public String winner = null;
     public Coin coin = null;
     public Labyrinth labyrinth = null;
+    public Player lastPlayer = null;
 
     public ServerData(Map<String, Player> playersMap) {
         this.playersMap = playersMap;
